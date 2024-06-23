@@ -1,0 +1,605 @@
+# Services I'll be running:
+
+# Managed by Home Assistant Supervised:
+#
+# Portainer
+# Uptime-Kuma
+# Home Assistant (Supervised)
+ 
+# Content:
+#
+# Radarr
+# Sonarr
+# Readarr 
+# Prowlarr
+# Jellyseerr
+# Jellyfin
+# Transmission
+
+# Utilities:
+#
+# Nextcloud
+# Vaultwarden
+# PufferPanel
+
+# Network/Security:
+#
+# Pi-Hole
+# Traefik
+# Authentik
+# Suricata IDS
+
+version: "3.6"
+
+services:
+
+  # image used to index torrent links from the internet
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: arr-suite-prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/prowlarr:/config # database and Prowlarr configs
+    expose:
+      - 9696/tcp # web ui
+    ports:
+      - 9696:9696/tcp # web ui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.example.com`)
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+      # Optional part for traefik middlewares
+      - traefik.http.routers.prowlarr.middlewares=local-ipwhitelist@file
+
+  # image used to scan for tv shows
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: arr-suite-sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/sonarr:/config # database and Radarr configs
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
+    expose:
+      - 8989/tcp # web ui
+    ports:
+      - 8989:8989/tcp # web ui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.example.com`)
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
+      # Optional part for traefik middlewares
+      - traefik.http.routers.sonarr.middlewares=local-ipwhitelist@file
+
+  # image used to scan for movies
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: arr-suite-radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/radarr:/config
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
+    expose:
+      - 7878/tcp # web ui
+    ports:
+      - 7878:7878/tcp # web ui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.radarr.rule=Host(`radarr.example.com`)
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
+      # Optional part for traefik middlewares
+      - traefik.http.routers.radarr.middlewares=local-ipwhitelist@file
+
+  # image used to scan for music
+  lidarr:
+    image: linuxserver/lidarr:latest
+    container_name: arr-suite-lidarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/lidarr:/config
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
+    expose:
+      - 8686/tcp # web ui
+    ports:
+      - 8686:8686/tcp # web ui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.example.com`)
+      - traefik.http.services.lidarr.loadbalancer.server.port=8686
+      # Optional part for traefik middlewares
+      - traefik.http.routers.lidarr.middlewares=local-ipwhitelist@file
+
+  # image used to scan for books
+  readarr:
+    image: linuxserver/readarr:develop
+    container_name: arr-suite-readarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/readarr:/config
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
+    expose:
+      - 8787/tcp # web ui
+    ports:
+      - 8787:8787/tcp # web ui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.readarr.rule=Host(`readarr.example.com`)
+      - traefik.http.services.readarr.loadbalancer.server.port=8787
+      # Optional part for traefik middlewares
+      - traefik.http.routers.readarr.middlewares=local-ipwhitelist@file
+
+  # image used to bypass cloudflare for prowlarr
+  flaresolverr:
+    image: flaresolverr/flaresolverr:latest
+    container_name: arr-suite-flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=Europe/Berlin
+    expose:
+      - 8191/tcp # listening port for selenium
+    restart: unless-stopped
+    networks:
+      - proxy    
+
+  # image used for vpn killswitch network
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: arr-suite-gluetun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8080:8080 # qbittorrent http web ui
+    environment:
+      # see https://github.com/qdm12/gluetun-wiki for more details
+      # example envs based on https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/mullvad.md
+      - VPN_SERVICE_PROVIDER=mullvad # define the vpn provider
+      - VPN_TYPE=wireguard # define the vpn protocol to use
+      - WIREGUARD_PRIVATE_KEY=wOEI9rqqbDwnN8/Bpp22sVz48T71vJ4fYmFWujulwUU= # define your wireguard private key here
+      - WIREGUARD_ADDRESSES=10.64.222.21/32 # define the ipv4 vpn network subnet here
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/gluetun:/gluetun
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.example.com`)
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      # Optional part for traefik middlewares
+      - traefik.http.routers.qbittorrent.middlewares=local-ipwhitelist@file
+
+  # image used to download stuff; run over gluetun network (vpn killswitch)
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: arr-suite-qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+      - WEBUI_PORT=8080
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/qbittorrent:/config
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media/downloads:/media/downloads
+    depends_on:
+      - gluetun
+    network_mode: container:arr-suite-gluetun # use the gluetun container network (vpn killswitch)
+    restart: unless-stopped
+
+  # image used to manage media and stream it
+  jellyfin:
+    image: linuxserver/jellyfin:latest
+    container_name: arr-suite-jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/jellyfin:/config # emby data storage location; can grow very large
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/data # media goes here
+      #- ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/jellyfin/lib:/opt/vc/lib # optional; path for Raspberry Pi OpenMAX libs
+    expose:
+      - 8096/tcp # http web ui
+    ports:
+      - 8096:8096/tcp # http web ui
+    #devices:
+    #  - /dev/dri:/dev/dri #optional
+    #  - /dev/vchiq:/dev/vchiq #optional
+    #  - /dev/video10:/dev/video10 #optional
+    #  - /dev/video11:/dev/video11 #optional
+    #  - /dev/video12:/dev/video12 #optional
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.jellyfin.rule=Host(`jellyfin.example.com`)
+      - traefik.http.services.jellyfin.loadbalancer.server.port=8096
+      # Optional part for traefik middlewares
+      - traefik.http.routers.jellyfin.middlewares=local-ipwhitelist@file    
+
+  adguard:
+    container_name: adguard
+    hostname: adguard
+    image: adguard/adguardhome:latest
+    ports:
+      - 3000:3000/tcp # only required during initial setup
+      - 8080:80/tcp # web interface after setup
+      - 53:53/tcp # dns
+      - 53:53/udp # dns
+       - 67:67/udp # dhcp
+      # - 68:68/tcp # dhcp
+      # - 68:68/udp # dhcp
+      # - 784:784/udp # dns-over-quic
+       - 853:853/tcp # dns over tls
+      # - 853:853/udp # dns over tls
+      # - 5443:5443/tcp # dnscrypt
+      # - 5443:5443/udp # dnscrypt
+    restart: unless-stopped
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/adguard-home/work:/opt/adguardhome/work
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/adguard-home/conf:/opt/adguardhome/conf
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.adguard.rule=Host(`dns.example.com`)
+      - traefik.http.services.adguard.loadbalancer.server.port=8080
+      # Optional part for traefik middlewares
+      - traefik.http.routers.adguard.middlewares=local-ipwhitelist@file,authentik@docker
+
+postgresql:
+    image: docker.io/library/postgres:16-alpine
+    container_name: authentik-psql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/psql:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${PG_PASS:-authentik}
+      POSTGRES_USER: ${PG_USER:-authentik}
+      POSTGRES_DB: ${PG_DB:-authentik}
+    env_file:
+      - .env
+    networks:
+      - authentik-internal
+
+  redis:
+    image: docker.io/library/redis:alpine
+    container_name: authentik-redis
+    command: --save 60 1 --loglevel warning
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/redis:/data
+    networks:
+      - authentik-internal
+
+  authentik-proxy:
+    image: ghcr.io/goauthentik/server:2024.4
+    container_name: authentik
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-authentiksupersecretkey}
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/media:/media
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/custom-templates:/templates
+    expose:
+      - 9000
+      - 9443
+    env_file:
+      - .env
+    depends_on:
+      - postgresql
+      - redis
+    networks:
+      - proxy
+      - authentik-internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.authentik.rule=Host(`authentik.example.com`) || HostRegexp(`{subdomain:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?}.example.com`) && PathPrefix(`/outpost.goauthentik.io/`)
+      - traefik.http.services.authentik.loadbalancer.server.port=9000
+      - traefik.docker.network=proxy
+      - traefik.http.middlewares.authentik.forwardauth.address=http://authentik-proxy:9000/outpost.goauthentik.io/auth/traefik
+      - traefik.http.middlewares.authentik.forwardauth.trustForwardHeader=true
+      - traefik.http.middlewares.authentik.forwardauth.authResponseHeaders=X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid,X-authentik-jwt,X-authentik-meta-jwks,X-authentik-meta-outpost,X-authentik-meta-provider,X-authentik-meta-app,X-authentik-meta-version
+
+  worker:
+    image: ghcr.io/goauthentik/server:2024.4
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    user: root
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-authentiksupersecretkey}
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/certs:/certs
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/media:/media
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/custom-templates:/templates
+    env_file:
+      - .env
+    depends_on:
+      - postgresql
+      - redis      
+    networks:
+      - authentik-internal
+
+  homarr:
+    container_name: homarr
+    image: ghcr.io/ajnart/homarr:latest
+    restart: unless-stopped
+    environment:
+      - PASSWORD=MySecureLoginPassword
+      - TZ="Europe/Berlin"
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/homarr/configs:/app/data/configs
+      #- ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/homarr/icons:/app/public/icons # optional for custom icons
+    ports:
+      - '7575:7575'
+
+nextcloud-db:
+    image: mariadb:lts
+    container_name: nextcloud-db
+    hostname: nextcloud-db
+    command: --transaction-isolation=READ-COMMITTED --innodb_read_only_compressed=OFF
+    restart: unless-stopped
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/nextcloud/database:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-nextcloud}
+      - MYSQL_USER=${MYSQL_USER:-nextcloud}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-nextcloud}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-nextcloud-root-pw}
+      - MYSQL_INITDB_SKIP_TZINFO=1
+      - MARIADB_AUTO_UPGRADE=1
+      - PUID=${MYSQL_PUID:-1000}
+      - PGID=${MYSQL_PGID:-1000}
+      - TZ=${MSQL_TZ:-Europe/Berlin}
+    networks:
+      - proxy
+
+  nextcloud-redis:
+    image: redis:alpine
+    container_name: nextcloud-redis
+    hostname: nextcloud-redis
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "$${REDIS_PASSWORD:-nextcloud}"
+    networks:
+      - proxy
+
+  nextcloud-app:
+    image: nextcloud:29-apache
+    container_name: nextcloud-app
+    hostname: nextcloud-app
+    restart: unless-stopped
+    expose:
+      - 80/tcp
+    ports:
+      - 8080:80
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    environment:
+      - NEXTCLOUD_ADMIN_USER=${NC_ADMIN_USER:-admin}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NC_ADMIN_USER_PASSWORD:-adminpass}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NC_TRUSTED_DOMAINS:-cloud.example.com}
+      - TRUSTED_PROXIES=${NC_TRUSTEDPROXIES:-172.16.0.0/24}
+      #- OVERWRITEPROTOCOL=${NC_OVERWRITEPROTOCOL:-http}
+      #- OVERWRITECLIURL=${NC_OVERWRITECLIURL:-http://127.0.0.1:8080}
+      #- OVERWRITEHOST=${NC_OVERWRITEHOST:-127.0.0.1:8080}
+      - MYSQL_HOST=${MYSQL_HOST:-nextcloud-db}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-nextcloud}
+      - MYSQL_USER=${MYSQL_USER:-nextcloud}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-nextcloud}
+      - REDIS_HOST=${REDIS_HOST:-nextcloud-redis}
+      - REDIS_HOST_PASSWORD=${REDIS_PASSWORD:-nextcloud}
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/nextcloud/data:/var/www/html/data
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/nextcloud/app:/var/www/html
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.nextcloud.rule=(Host(`cloud.example.com`)) # pls change
+      - traefik.http.services.nextcloud.loadbalancer.server.port=80
+      - traefik.http.routers.nextcloud.middlewares=local-ipwhitelist@file,authelia@docker
+      - traefik.docker.network=proxy
+      - traefik.http.middlewares.nextcloud-dav.replacepathregex.regex=^/.well-known/ca(l|rd)dav
+      - traefik.http.middlewares.nextcloud-dav.replacepathregex.replacement=/remote.php/dav/
+      - traefik.http.middlewares.limit.buffering.maxRequestBodyBytes=50000000 # only necessary for enabled file uploads
+      - traefik.http.middlewares.limit.buffering.maxResponseBodyBytes=50000000 # only necessary for enabled file uploads
+      - traefik.http.middlewares.limit.buffering.memRequestBodyBytes=50000000 # only necessary for enabled file uploads
+      - traefik.http.middlewares.limit.buffering.memResponseBodyBytes=50000000 # only necessary for enabled file uploads
+    networks:
+      - proxy
+
+  vaultwarden:
+    image: vaultwarden/server:latest-alpine
+    container_name: vaultwarden
+    hostname: vaultwarden
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+    environment:
+      #- ADMIN_TOKEN=$$argon2id$$v=19$$m=19456,t=2,p=1$$UUZxK1FZMkZoRHFQRlVrTXZvS0E3bHpNQW55c2dBN2NORzdsa0Nxd1JhND0$$cUoId+JBUsJutlG4rfDZayExfjq4TCt48aBc9qsc3UI # see https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page#secure-the-admin_token
+      #- SIGNUPS_ALLOWED=false
+      #- SIGNUPS_VERIFY=true
+      #- INVITATIONS_ALLOWED=true # only admins and orga owners
+      #- globalSettings__mail__replyToEmail=bitwarden@example.com
+      #- globalSettings__mail__smtp__host=smtp.gmail.com
+      #- globalSettings__mail__smtp__username=bitwarden@example.com
+      #- globalSettings__mail__smtp__password=MyStrongSmtpLoginPassword
+      #- globalSettings__mail__smtp__ssl=true
+      #- globalSettings__mail__smtp__port=587
+      - LOG_FILE=/data/logs/access.log
+      - WEBSOCKET_ENABLED=true
+      - ROCKET_ENV=prod
+      - ROCKET_WORKERS=10
+      - TZ=Europe/Berlin
+      - LOG_LEVEL=error
+      - EXTENDED_LOGGING=true
+    ports:
+      - 8888:80
+    networks:
+      - proxy
+    labels:
+      - com.centurylinklabs.watchtower.monitor-only=true
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.vaultwarden.rule=Host(`bitwarden.example.com`)
+      - traefik.http.routers.vaultwarden.service=vaultwarden
+      - traefik.http.services.vaultwarden.loadbalancer.server.port=80
+      - traefik.http.routers.vaultwarden-admin.rule=Host(`bitwarden.example.com`) && Path(`/admin`)
+      - traefik.http.routers.vaultwarden-admin.service=vaultwarden
+      - traefik.http.services.vaultwarden-admin.loadbalancer.server.port=80
+      - traefik.http.routers.vaultwarden-admin.middlewares=local-ipwhitelist@file,authelia@file
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/vaultwarden/data:/data
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/vaultwarden/logs:/data/logs
+
+  # this service will backup your vaultwarden instance correctly
+  # see https://github.com/Bruceforce/vaultwarden-backup for more information
+  vaultwarden-backup:
+    image: bruceforce/vaultwarden-backup:latest
+    container_name: vaultwarden-backup
+    hostname: vaultwarden-backup
+    restart: always
+    init: true
+    depends_on:
+      - vaultwarden
+    #labels:
+    #  com.centurylinklabs.watchtower.monitor-only: true
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/vaultwarden/data:/data/
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/vaultwarden/backup:/myBackup
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    #networks:
+    #  - proxy
+    environment:
+      - TIMESTAMP=true
+      - DELETE_AFTER=30
+      - UID=0
+      - GID=1000
+      - TZ=Europe/Berlin
+      - BACKUP_DIR=/myBackup
+      - CRON_TIME=50 3 * * * # see https://crontab.guru/, define without quotes!
+  app:
+    container_name: uptime-kuma
+    hostname: uptime-kuma
+    image: louislam/uptime-kuma
+    restart: always
+    ports:
+      - 3001:3001
+    expose:
+      - 3001
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/uptimekuma:/app/data
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.uptimekuma.rule=Host(`uptimekuma.example.com`)
+      - traefik.http.services.uptimekuma.loadbalancer.server.port=3001
+      - traefik.docker.network=proxy
+      # Part for local lan services only
+      #- traefik.http.routers.uptimekuma.middlewares=local-ipwhitelist@file
+  pufferpanel:
+    build: .
+    image: ghcr.io/oskardotglobal/pufferpanel:arm64-java
+    container_name: pufferpanel
+    restart: on-failure
+    environment:
+      - 'PUFFER_LOGS=/etc/pufferpanel/logs' # Location of your logs
+      - 'PUFFER_PANEL_DATABASE_DIALECT=sqlite3' # Databse type https://docs.pufferpanel.com/en/2.x/guides/database.html
+      - 'PUFFER_PANEL_DATABASE_URL=file:/etc/pufferpanel/pufferpanel.db?cache=shared' # SQL URL https://docs.pufferpanel.com/en/2.x/guides/da>  
+      - 'PUFFER_DAEMON_DATA_CACHE=/var/lib/pufferpanel/cache' # Cache location within the container
+      - 'PUFFER_DAEMON_DATA_SERVERS=/var/lib/pufferpanel/servers' # Server data location within the container
+      - 'PUFFER_DAEMON_DATA_MODULES=/var/lib/pufferpanel/modules' # Location for Modules within the container
+
+    volumes:
+      - '/etc/pufferpanel:/etc/pufferpanel' # Config/logs folder
+      - '/var/lib/pufferpanel:/var/lib/pufferpanel' # Data folder
+      - '/var/run/docker.sock:/var/run/docker.sock' # Docker socket, leave this in.
+
+    ports:
+      - '8080:8080' # Panel port
+      - '5657:5657' # SFTP port
+      - '27015:27015' # Default SRCDS port
+      - '25565:25565' # Default Minecraft Java port
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.pufferpanel.rule=Host(`puff.example.com`)
+      - traefik.http.services.pufferpanel.loadbalancer.server.port=8080
+      # Optional part for traefik middlewares
+      - traefik.http.routers.pufferpanel.middlewares=local-ipwhitelist@file,authentik@docker
+
+networks:
+  proxy:
+    external: true
+  authentik-internal:
+    external: true
