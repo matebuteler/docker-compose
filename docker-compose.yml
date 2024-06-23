@@ -286,7 +286,7 @@ services:
       # Optional part for traefik middlewares
       - traefik.http.routers.adguard.middlewares=local-ipwhitelist@file,authentik@docker
 
-postgresql:
+  postgresql:
     image: docker.io/library/postgres:16-alpine
     container_name: authentik-psql
     restart: unless-stopped
@@ -396,7 +396,7 @@ postgresql:
     ports:
       - '7575:7575'
 
-nextcloud-db:
+  nextcloud-db:
     image: mariadb:lts
     container_name: nextcloud-db
     hostname: nextcloud-db
