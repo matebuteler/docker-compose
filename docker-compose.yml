@@ -264,11 +264,11 @@ services:
       - 8080:80/tcp # web interface after setup
       - 53:53/tcp # dns
       - 53:53/udp # dns
-       - 67:67/udp # dhcp
+      - 67:67/udp # dhcp
       # - 68:68/tcp # dhcp
       # - 68:68/udp # dhcp
       # - 784:784/udp # dns-over-quic
-       - 853:853/tcp # dns over tls
+      - 853:853/tcp # dns over tls
       # - 853:853/udp # dns over tls
       # - 5443:5443/tcp # dnscrypt
       # - 5443:5443/udp # dnscrypt
@@ -302,8 +302,7 @@ services:
       POSTGRES_PASSWORD: ${PG_PASS:-authentik}
       POSTGRES_USER: ${PG_USER:-authentik}
       POSTGRES_DB: ${PG_DB:-authentik}
-    env_file:
-      - .env
+    env_file: stack.env
     networks:
       - authentik-internal
 
@@ -341,8 +340,7 @@ services:
     expose:
       - 9000
       - 9443
-    env_file:
-      - .env
+    env_file: stack.env
     depends_on:
       - postgresql
       - redis
@@ -375,8 +373,7 @@ services:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/certs:/certs
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/media:/media
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/custom-templates:/templates
-    env_file:
-      - .env
+    env_file: stack.env
     depends_on:
       - postgresql
       - redis      
@@ -441,6 +438,7 @@ services:
     depends_on:
       - nextcloud-db
       - nextcloud-redis
+    env_file: stack.env
     environment:
       - NEXTCLOUD_ADMIN_USER=${NC_ADMIN_USER:-admin}
       - NEXTCLOUD_ADMIN_PASSWORD=${NC_ADMIN_USER_PASSWORD:-adminpass}
@@ -597,7 +595,36 @@ services:
       - traefik.http.services.pufferpanel.loadbalancer.server.port=8080
       # Optional part for traefik middlewares
       - traefik.http.routers.pufferpanel.middlewares=local-ipwhitelist@file,authentik@docker
-
+  frigate:
+    container_name: frigate
+    privileged: true # this may not be necessary for all setups
+    restart: unless-stopped
+    image: ghcr.io/blakeblackshear/frigate:stable-rk
+    shm_size: "64mb" # update for your cameras based on calculation above
+    devices:
+      - /dev/video11:/dev/video11  # For Raspberry Pi 4B
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /path/to/your/config:/config
+      - /path/to/your/storage:/media/frigate
+      - type: tmpfs # Optional: 1GB of memory, reduces SSD/SD Card wear
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "5000:5000"
+      - "8554:8554" # RTSP feeds
+      - "8555:8555/tcp" # WebRTC over tcp
+      - "8555:8555/udp" # WebRTC over udp
+    environment:
+      FRIGATE_RTSP_PASSWORD: "password"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.frigate.rule=Host(`frigate.example.com`)
+      - traefik.http.services.frigate.loadbalancer.server.port=5000
+      # Optional part for traefik middlewares
+      - traefik.http.routers.frigate.middlewares=local-ipwhitelist@file,authentik@docker
 networks:
   proxy:
     external: true
