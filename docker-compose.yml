@@ -37,10 +37,10 @@ services:
   prowlarr:
     image: linuxserver/prowlarr:latest
     container_name: arr-suite-prowlarr
+    env_file: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/prowlarr:/config # database and Prowlarr configs
     expose:
@@ -65,7 +65,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
+    env_file: stack.env
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/sonarr:/config # database and Radarr configs
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
@@ -88,10 +88,10 @@ services:
   radarr:
     image: linuxserver/radarr:latest
     container_name: arr-suite-radarr
+    env_file: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/radarr:/config
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
@@ -114,10 +114,10 @@ services:
   lidarr:
     image: linuxserver/lidarr:latest
     container_name: arr-suite-lidarr
+    env_file: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/lidarr:/config
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
@@ -140,10 +140,10 @@ services:
   readarr:
     image: linuxserver/readarr:develop
     container_name: arr-suite-readarr
+    stack_env: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/readarr:/config
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/media # location of media and qbittorrent download folder
@@ -165,12 +165,12 @@ services:
   # image used to bypass cloudflare for prowlarr
   flaresolverr:
     image: flaresolverr/flaresolverr:latest
+    env_file: stack.env
     container_name: arr-suite-flaresolverr
     environment:
       - LOG_LEVEL=info
       - LOG_HTML=false
       - CAPTCHA_SOLVER=none
-      - TZ=Europe/Berlin
     expose:
       - 8191/tcp # listening port for selenium
     restart: unless-stopped
@@ -185,13 +185,20 @@ services:
       - NET_ADMIN
     ports:
       - 8080:8080 # qbittorrent http web ui
+    env_file: 
+      - stack.env
+      - secrets.env
     environment:
       # see https://github.com/qdm12/gluetun-wiki for more details
       # example envs based on https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/mullvad.md
-      - VPN_SERVICE_PROVIDER=mullvad # define the vpn provider
-      - VPN_TYPE=wireguard # define the vpn protocol to use
-      - WIREGUARD_PRIVATE_KEY=wOEI9rqqbDwnN8/Bpp22sVz48T71vJ4fYmFWujulwUU= # define your wireguard private key here
-      - WIREGUARD_ADDRESSES=10.64.222.21/32 # define the ipv4 vpn network subnet here
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_ENDPOINT_IP=${IP_ADDRESS}
+      - VPN_ENDPOINT_PORT=${VPN_KS_PORT}
+      - WIREGUARD_PUBLIC_KEY=${VPN_KS_PUB}
+      - WIREGUARD_PRIVATE_KEY=${VPN_KS_PRIV}
+      - WIREGUARD_PRESHARED_KEY=${VPN_KS_PS}
+      - WIREGUARD_ADDRESSES=10.64.222.21/32
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/gluetun:/gluetun
     restart: unless-stopped
@@ -209,10 +216,10 @@ services:
   qbittorrent:
     image: linuxserver/qbittorrent:latest
     container_name: arr-suite-qbittorrent
+    env_file: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
       - WEBUI_PORT=8080
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/qbittorrent:/config
@@ -226,10 +233,10 @@ services:
   jellyfin:
     image: linuxserver/jellyfin:latest
     container_name: arr-suite-jellyfin
+    env_file: stack.env
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/configs/jellyfin:/config # emby data storage location; can grow very large
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/arr-suite/media:/data # media goes here
@@ -302,7 +309,9 @@ services:
       POSTGRES_PASSWORD: ${PG_PASS:-authentik}
       POSTGRES_USER: ${PG_USER:-authentik}
       POSTGRES_DB: ${PG_DB:-authentik}
-    env_file: stack.env
+    env_file: 
+      - stack.env
+      - secrets.env
     networks:
       - authentik-internal
 
@@ -327,6 +336,9 @@ services:
     container_name: authentik
     restart: unless-stopped
     command: server
+    env_file: 
+      - stack.env
+      - secrets.env
     environment:
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_POSTGRESQL__HOST: postgresql
@@ -340,7 +352,6 @@ services:
     expose:
       - 9000
       - 9443
-    env_file: stack.env
     depends_on:
       - postgresql
       - redis
@@ -362,6 +373,9 @@ services:
     restart: unless-stopped
     command: worker
     user: root
+    env_file: 
+      - stack.env
+      - secrets.env
     environment:
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_POSTGRESQL__HOST: postgresql
@@ -373,7 +387,6 @@ services:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/certs:/certs
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/media:/media
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/authentik/custom-templates:/templates
-    env_file: stack.env
     depends_on:
       - postgresql
       - redis      
@@ -384,9 +397,11 @@ services:
     container_name: homarr
     image: ghcr.io/ajnart/homarr:latest
     restart: unless-stopped
+    env_file: 
+      - stack.env
+      - secrets.env
     environment:
-      - PASSWORD=MySecureLoginPassword
-      - TZ="Europe/Berlin"
+      - PASSWORD=${HOMARR_PASS}
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/homarr/configs:/app/data/configs
       #- ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/homarr/icons:/app/public/icons # optional for custom icons
@@ -399,6 +414,9 @@ services:
     hostname: nextcloud-db
     command: --transaction-isolation=READ-COMMITTED --innodb_read_only_compressed=OFF
     restart: unless-stopped
+    env_file:
+      - stack.env
+      - secrets.env
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/nextcloud/database:/var/lib/mysql
     environment:
@@ -410,7 +428,6 @@ services:
       - MARIADB_AUTO_UPGRADE=1
       - PUID=${MYSQL_PUID:-1000}
       - PGID=${MYSQL_PGID:-1000}
-      - TZ=${MSQL_TZ:-Europe/Berlin}
     networks:
       - proxy
 
@@ -438,12 +455,14 @@ services:
     depends_on:
       - nextcloud-db
       - nextcloud-redis
-    env_file: stack.env
+    env_file: 
+      - stack.env
+      - secrets.env
     environment:
-      - NEXTCLOUD_ADMIN_USER=${NC_ADMIN_USER:-admin}
-      - NEXTCLOUD_ADMIN_PASSWORD=${NC_ADMIN_USER_PASSWORD:-adminpass}
-      - NEXTCLOUD_TRUSTED_DOMAINS=${NC_TRUSTED_DOMAINS:-cloud.example.com}
-      - TRUSTED_PROXIES=${NC_TRUSTEDPROXIES:-172.16.0.0/24}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER:-admin}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_USER_PASSWORD:-adminpass}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS:-cloud.example.com}
+      - TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES:-172.16.0.0/24}
       #- OVERWRITEPROTOCOL=${NC_OVERWRITEPROTOCOL:-http}
       #- OVERWRITECLIURL=${NC_OVERWRITECLIURL:-http://127.0.0.1:8080}
       #- OVERWRITEHOST=${NC_OVERWRITEHOST:-127.0.0.1:8080}
@@ -493,7 +512,7 @@ services:
       - WEBSOCKET_ENABLED=true
       - ROCKET_ENV=prod
       - ROCKET_WORKERS=10
-      - TZ=Europe/Berlin
+      - TZ=${TZ}
       - LOG_LEVEL=error
       - EXTENDED_LOGGING=true
     ports:
@@ -539,7 +558,7 @@ services:
       - DELETE_AFTER=30
       - UID=0
       - GID=1000
-      - TZ=Europe/Berlin
+      - TZ=${TZ}
       - BACKUP_DIR=/myBackup
       - CRON_TIME=50 3 * * * # see https://crontab.guru/, define without quotes!
   app:
