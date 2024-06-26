@@ -1,12 +1,6 @@
 # docker-compose
 A single docker-compose for all of my selfhosted services. This repo includes:
 
-# Managed by Home Assistant Supervised:
-
-- Portainer
-- Uptime-Kuma
-- Home Assistant (Supervised)
- 
 # Content:
 
 - Radarr
@@ -29,3 +23,8 @@ A single docker-compose for all of my selfhosted services. This repo includes:
 - Traefik
 - Authentik
 - Suricata IDS (WIP)
+
+# Not inside the compose file
+
+- Home Assistant (Supervised)
+- Portainer (should be installed as a Home Assistant add-on) 
