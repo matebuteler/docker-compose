@@ -480,7 +480,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.nextcloud.rule=(Host(`cloud.${DOMAIN_NAME}`)) # pls change
       - traefik.http.services.nextcloud.loadbalancer.server.port=80
-      - traefik.http.routers.nextcloud.middlewares=local-ipwhitelist@file,authelia@docker
+      - traefik.http.routers.nextcloud.middlewares=local-ipwhitelist@file,authentik@docker
       - traefik.docker.network=proxy
       - traefik.http.middlewares.nextcloud-dav.replacepathregex.regex=^/.well-known/ca(l|rd)dav
       - traefik.http.middlewares.nextcloud-dav.replacepathregex.replacement=/remote.php/dav/
@@ -616,7 +616,7 @@ services:
       - traefik.http.routers.pufferpanel.rule=Host(`puff.${DOMAIN_NAME}`)
       - traefik.http.services.pufferpanel.loadbalancer.server.port=8080
       # Optional part for traefik middlewares
-      # - traefik.http.routers.pufferpanel.middlewares=local-ipwhitelist@file,authentik@docker
+      - traefik.http.routers.pufferpanel.middlewares=local-ipwhitelist@file,authentik@docker
   frigate:
     container_name: frigate
     privileged: true # this may not be necessary for all setups
