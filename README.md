@@ -32,28 +32,28 @@ A single docker-compose for all of my selfhosted services. This repo includes:
 # Default Ports
 Content:
 
- Lidarr 455
- Radarr 454
- Sonarr 453
- Readarr 452
- Prowlarr 451
- Flaresolverr 8191
- Jellyseerr 450
- Jellyfin 449
- qBittorrent 448
+ Lidarr: 455 - 
+ Radarr: 54 -
+ Sonarr: 453 -
+ Readarr: 452 -
+ Prowlarr: 451 -
+ Flaresolverr: 8191 -
+ Jellyseerr: 450 -
+ Jellyfin: 449 -
+ qBittorrent: 448 -
 
  Utilities:
 
- Nextcloud 447
- Vaultwarden 446
- PufferPanel 445, 5657, 27015, 25565
- Homarr 7575
- Frigate 5000, 8554, 8555
+ Nextcloud: 447 -
+ Vaultwarden: 446 -
+ PufferPanel: 445, 5657, 27015, 25565 -
+ Homarr: 7575 -
+ Frigate: 5000, 8554, 8555 - 
 
  Network/Security:
 
- Adguard 444, 3000, 53, 67, 853
- Traefik 443
- Authentik 8000, 8443
- Suricata IDS (WIP)
- Uptime-Kuma 3001
+ Adguard: 444, 3000, 53, 67, 853 -
+ Traefik: 443 -
+ Authentik: 8000, 8443 -
+ Suricata IDS (WIP) -
+ Uptime-Kuma: 3001 -
